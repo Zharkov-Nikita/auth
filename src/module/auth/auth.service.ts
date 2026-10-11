@@ -1,13 +1,21 @@
-import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InternalAccountService } from '../../internal/account/account.service';
+import { InternalAccountService } from 'src/internal/account/account.service';
 import { SignInDto } from './dto/sign-in.dto';
 import { JwtDto, RefreshJwtDto } from './dto/jwt.dto';
 import { ConfigService } from '@nestjs/config';
+import { Redis } from 'ioredis';
+import { REDIS_TOKEN } from 'src/config/redis/redis.constant';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(REDIS_TOKEN) private readonly redis: Redis,
     private readonly accountServiceInternal: InternalAccountService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -21,11 +29,21 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const users = await this.accountServiceInternal.GetUsersByFilter({
-      login: params.login,
-    });
+    //получение userId из Redis
+    let userId = await this.redis.get(params.login);
 
-    const payload = { login: params.login, userId: users.items[0].userId };
+    //проверка на наличие userId
+    if (!userId) {
+      const users = await this.accountServiceInternal.GetUsersByFilter({
+        login: params.login,
+      });
+      userId = users.items[0].userId;
+
+      // добавление login:userId в Redis
+      await this.redis.set(params.login, userId);
+    }
+
+    const payload = { login: params.login, userId };
     const access = this.jwtService.sign(payload, {
       secret: this.config.get('JWT_ACCESS_SECRET'),
       algorithm: this.config.get('JWT_ALG'),
@@ -58,11 +76,13 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const { items: users } = await this.accountServiceInternal.GetUsersByFilter({
-      userIds: [jwtPayload.userId],
-    });
+    const { items: users } = await this.accountServiceInternal.GetUsersByFilter(
+      {
+        userIds: [jwtPayload.userId],
+      },
+    );
 
-    if (!users.length) {
+    if (users.length) {
       throw new NotFoundException('user not found');
     }
 

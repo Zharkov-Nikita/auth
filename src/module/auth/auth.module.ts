@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { AccountModule } from '../../internal/account/account.module';
+import { InternalAccountModule } from 'src/internal/account/account.module';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
+import { RedisModule } from 'src/config/redis/redis.module';
 
 @Module({
-  controllers: [AuthController, AccountModule],
-  providers: [AuthService]
+  imports: [InternalAccountModule, JwtModule, ConfigModule, RedisModule],
+  controllers: [AuthController],
+  providers: [AuthService],
 })
 export class AuthModule {}

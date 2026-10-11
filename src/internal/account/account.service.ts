@@ -15,7 +15,7 @@ export class InternalAccountService {
   ) {}
 
   async verification(params: VerificationParams): Promise<boolean> {
-    const url = `${this.config.get('ACCOUNT_URL')}/v1/user/verification`;
+    const url = `${this.config.get('ACCOUNT_URL')}/user/verification`;
     const res = await this.httpService.axiosRef.get(url, { params });
 
     return res.data;
@@ -24,7 +24,7 @@ export class InternalAccountService {
   async GetUsersByFilter(
     params: GetUsersByFiltersParam,
   ): Promise<GetUsersResponse> {
-    const url = `${this.config.get('ACCOUNT_URL')}/v1/user`;
+    const url = `${this.config.get('ACCOUNT_URL')}/user`;
     const res = await this.httpService.axiosRef.get(url, { params });
 
     return res.data;
